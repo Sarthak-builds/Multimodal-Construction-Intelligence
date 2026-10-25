@@ -396,7 +396,7 @@ with tab3:
     with colA:
         structure = st.selectbox("Structure type", list(COST_PER_SQFT.keys()))
         tier = st.radio("Location tier", ["1", "2", "3"],
-                        caption=["Tier 1 (Metro)", "Tier 2", "Tier 3"],
+                        captions=["Tier 1 (Metro)", "Tier 2", "Tier 3"],
                         index=0, horizontal=True)
     with colB:
         sqft = st.number_input("Built-up area (sqft)", min_value=200, max_value=100000, value=1800, step=50)

@@ -3,7 +3,7 @@
 **Skill Wallet Capstone Project 1** · Platform ID `6ac4c98d1dcde6d7857c1642`
 **Category:** Generative AI | Real Estate Decision Support
 
-> Live Demo: **https://construction-intelligence-platform.streamlit.app**
+> Live Demo: **https://multimodal-construction-intelligence-jvjpieyru5jse6zpmaeq7g.streamlit.app/**
 > GitHub: https://github.com/Sarthak-builds/SkillWallet-Capstones
 
 ## 📌 Overview

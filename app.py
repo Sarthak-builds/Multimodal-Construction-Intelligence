@@ -5,6 +5,8 @@ Categories: Generative AI | Real Estate Decision Support
 Platform ID: 6ac4c98d1dcde6d7857c1642
 """
 
+from __future__ import annotations
+
 import json
 import re
 import urllib.parse
@@ -27,10 +29,11 @@ GEMINI_URL = (
 
 
 def get_api_key() -> str:
-    return (
-        st.session_state.get("api_key")
-        or st.secrets.get("GEMINI_API_KEY", "")
-    ).strip()
+    try:
+        secrets_key = st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        secrets_key = ""  # no secrets file configured
+    return (st.session_state.get("api_key") or secrets_key).strip()
 
 
 def call_gemini(api_key: str, parts: list, generation_config: dict | None = None) -> str:
@@ -301,7 +304,7 @@ with tab1:
                     if upload1:
                         img = Image.open(upload1)
                         parts.append({"inline_data": {"mime_type": upload1.type,
-                                                      "data": img_bytes_b64(upload1)}})
+                                                      "data": image_to_b64(upload1)}})
                         payload = parse_json_reply(call_gemini(active_key, parts))
                     else:
                         payload = demo_ppe_payload(False)
@@ -438,66 +441,67 @@ with tab3:
 # ==================================================================
 # Tab 4 - Weather Advisory + Multi-turn Assistant (Epic 5)
 # ==================================================================
-WEATHER = {
-    "Normal": ("✅ Normal Conditions",
-               ["All operations may proceed as per standard protocol.",
-                "Maintain routine QA and documentation."]),
-    "High Wind": ("💨 High Wind Alert",
-                  ["SUSPEND crane operations above 45 km/h gusts (OSHA 1926.1431).",
-                   "Secure loose materials, sheeting and formwork on upper floors.",
-                   "Use tag lines; postpone heavy lifts till conditions normalise."]),
-    "Heavy Rain": ("🌧️ Heavy Rain Protocol",
-                   ["Pause concrete pours; protect placed concrete with curing covers (IS 456).",
-                    "Isolate electrical panels; ground temporary power lines.",
-                    "Ensure pumps/sullying are operational; raise worker visibility rating."]),
-    "Extreme Heat": ("🔥 Extreme Heat Protocol",
-                     ["Wet-cure slabs frequently; schedule pours early morning.",
-                      "Enforce hydration breaks & shaded rest zones for workers.",
-                      "Reschedule hot-work/welding; monitor heat-exhaustion first-aid readiness."]),
-}
-weather_sel = st.selectbox("Today's weather condition", list(WEATHER.keys()))
-icon_title, alerts = WEATHER[weather_sel]
-st.markdown(f'<div class="card"><b>{icon_title}</b></div>', unsafe_allow_html=True)
-for i, alert in enumerate(alerts):
-    st.warning(alert, icon="⚠" if weather_sel != "Normal" else "✅")
+with tab4:
+    WEATHER = {
+        "Normal": ("✅ Normal Conditions",
+                   ["All operations may proceed as per standard protocol.",
+                    "Maintain routine QA and documentation."]),
+        "High Wind": ("💨 High Wind Alert",
+                      ["SUSPEND crane operations above 45 km/h gusts (OSHA 1926.1431).",
+                       "Secure loose materials, sheeting and formwork on upper floors.",
+                       "Use tag lines; postpone heavy lifts till conditions normalise."]),
+        "Heavy Rain": ("🌧️ Heavy Rain Protocol",
+                       ["Pause concrete pours; protect placed concrete with curing covers (IS 456).",
+                        "Isolate electrical panels; ground temporary power lines.",
+                        "Ensure pumps/sullying are operational; raise worker visibility rating."]),
+        "Extreme Heat": ("🔥 Extreme Heat Protocol",
+                         ["Wet-cure slabs frequently; schedule pours early morning.",
+                          "Enforce hydration breaks & shaded rest zones for workers.",
+                          "Reschedule hot-work/welding; monitor heat-exhaustion first-aid readiness."]),
+    }
+    weather_sel = st.selectbox("Today's weather condition", list(WEATHER.keys()))
+    icon_title, alerts = WEATHER[weather_sel]
+    st.markdown(f'<div class="card"><b>{icon_title}</b></div>', unsafe_allow_html=True)
+    for alert in alerts:
+        st.warning(alert, icon="⚠" if weather_sel != "Normal" else "✅")
 
-st.divider()
-st.markdown("#### 🤖 Daily Site Assistant (multi-turn construction engineering chatbot)")
+    st.divider()
+    st.markdown("#### 🤖 Daily Site Assistant (multi-turn construction engineering chatbot)")
 
-if "chat" not in st.session_state:
-    st.session_state.chat = [
-        {"role": "assistant", "content":
-            "Hello Site Engineer! Ask me about safety codes, curing, steel schedules, "
-            "concrete grades, or anything on your site."}
-    ]
+    if "chat" not in st.session_state:
+        st.session_state.chat = [
+            {"role": "assistant", "content":
+                "Hello Site Engineer! Ask me about safety codes, curing, steel schedules, "
+                "concrete grades, or anything on your site."}
+        ]
 
-for msg in st.session_state.chat:
-    if msg["role"] == "user":
-        st.markdown(f'<div class="chat-msg chat-user">🧑‍💼 {msg["content"]}</div>',
-                    unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="chat-msg chat-bot">🤖 {msg["content"]}</div>',
-                    unsafe_allow_html=True)
+    for msg in st.session_state.chat:
+        if msg["role"] == "user":
+            st.markdown(f'<div class="chat-msg chat-user">🧑‍💼 {msg["content"]}</div>',
+                        unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="chat-msg chat-bot">🤖 {msg["content"]}</div>',
+                        unsafe_allow_html=True)
 
-prompt = st.chat_input("Ask about your site…")
-if prompt:
-    st.session_state.chat.append({"role": "user", "content": prompt})
-    if active_key:
-        parts = [{"text":
-            "You are a practical construction engineering assistant for an Indian site. "
-            "Answer concisely with reference codes (IS/OSHA) where useful.\n\n"
-            "Conversation so far:\n" +
-            "\n".join(f'{m["role"]}: {m["content"]}' for m in st.session_state.chat[-10:]),
-        }]
-        try:
-            reply = call_gemini(active_key, parts)
-        except Exception as exc:
-            reply = f"AI unavailable ({exc}). Please retry or clear the key."
-    else:
-        reply = ("Demo mode: no Gemini API key configured. "
-                 "Add one in the sidebar (or via secrets) to chat with the live AI.")
-    st.session_state.chat.append({"role": "assistant", "content": reply})
-    st.rerun()
+    prompt = st.chat_input("Ask about your site…")
+    if prompt:
+        st.session_state.chat.append({"role": "user", "content": prompt})
+        if active_key:
+            parts = [{"text":
+                "You are a practical construction engineering assistant for an Indian site. "
+                "Answer concisely with reference codes (IS/OSHA) where useful.\n\n"
+                "Conversation so far:\n" +
+                "\n".join(f'{m["role"]}: {m["content"]}' for m in st.session_state.chat[-10:]),
+            }]
+            try:
+                reply = call_gemini(active_key, parts)
+            except Exception as exc:
+                reply = f"AI unavailable ({exc}). Please retry or clear the key."
+        else:
+            reply = ("Demo mode: no Gemini API key configured. "
+                     "Add one in the sidebar (or via secrets) to chat with the live AI.")
+        st.session_state.chat.append({"role": "assistant", "content": reply})
+        st.rerun()
 
 st.divider()
 st.caption(f"© 2026 · {APP_NAME} · Built for Skill Wallet evaluation · "
